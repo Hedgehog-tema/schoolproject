@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Taija Ruuhijärvi — сайт писательницы
 
-## Getting Started
+Полноценный сайт (фронтенд + бэкенд + база данных) для публикации книг, приёма заявок на заказ
+и регистрации пользователей с личным кабинетом.
 
-First, run the development server:
+## Стек
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Backend:** Node.js + Express + PostgreSQL, JWT-аутентификация, bcrypt для паролей
+- **Frontend:** React + Vite, React Router
+- **Оплата:** не подключена — "Tilaukset" (заказы) это форма-заявка; оплату и подтверждение вы ведёте сами (email/перевод), как и договаривались
+
+## Структура проекта
+
+```
+taija-site/
+├── backend/          Express API + PostgreSQL
+│   └── src/
+│       ├── db/        schema.sql, seed.sql, migrate.js, pool.js
+│       ├── middleware/ auth.js (JWT)
+│       └── routes/     auth, books, orders, materials, blog, gallery, newsletter
+└── frontend/         React (Vite) приложение
+    └── src/
+        ├── pages/      Home, About, Book, Gallery, Contact, Orders, Materials,
+        │               Blog, BlogPost, Login, Register, Dashboard
+        ├── components/ Navbar, Footer, ProtectedRoute
+        ├── context/    AuthContext (хранит JWT, пользователя)
+        └── api/        client.js — обёртка над fetch к /api/*
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Разделы сайта (соответствуют оригинальному Wix-сайту)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Оригинал (Wix)      | Новый сайт           |
+|----------------------|----------------------|
+| Home                 | `/` Главная           |
+| kuka minä olen?       | `/kuka-mina-olen` Обо мне |
+| Töppötassut          | `/toppotassut` Страница книги |
+| Kuvia                | `/kuvia` Галерея       |
+| Yhteystiedot          | `/yhteystiedot` Контакты |
+| Tilaukset             | `/tilaukset` Форма заказа (без онлайн-оплаты) |
+| Materiaalit           | `/materiaalit` Материалы (часть — только для зарегистрированных) |
+| Blog                  | `/blog` и `/blog/:slug` |
+| — (новое)             | `/kirjaudu` Вход, `/rekisteroidy` Регистрация |
+| — (новое, лучше оригинала) | `/oma-tili` Личный кабинет: сводка, история заказов, «моя библиотека» материалов, профиль |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Личный кабинет (`/oma-tili`)
 
-## Learn More
+Как вы и просили — это не копия сайта, а отдельный полезный раздел:
+- **Сводка**: количество заказов, сохранённых материалов, статус подписки, быстрые ссылки
+- **Мои заказы**: история всех заявок со статусами (Vastaanotettu / Vahvistettu / Lähetetty / Peruutettu)
+- **Моя библиотека**: сохранённые материалы с быстрым скачиванием
+- **Профиль**: смена имени, управление подпиской на рассылку
 
-To learn more about Next.js, take a look at the following resources:
+Статусы заказов сейчас выставляются вручную в базе (поле `status` в таблице `orders`) — в будущем это легко вывести в простую админ-панель.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Запуск локально
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1. База данных
 
-## Deploy on Vercel
+Нужен запущенный PostgreSQL. Создайте базу:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+createdb taija_db
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 2. Backend
+
+```bash
+cd backend
+cp .env.example .env     # и подставьте свои значения (особенно DATABASE_URL и JWT_SECRET)
+npm install
+npm run migrate          # создаст таблицы и добавит демо-данные (книга, материалы, блог, галерея)
+npm run dev               # http://localhost:4000
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev               # http://localhost:5173
+```
+
+Откройте http://localhost:5173 — запросы `/api/*` автоматически проксируются на backend (настроено в `vite.config.js`).
+
+> ⚠️ В этой изолированной среде, где я собирал проект, нет доступа в интернет для `npm install`,
+> поэтому запустить и протестировать сайт вживую я не мог — код написан и вычитан вручную
+> (бэкенд дополнительно проверен `node --check` на синтаксис). Обязательно прогоните
+> `npm install && npm run dev` у себя и напишите, если что-то не заведётся — поправим.
+
+## Что нужно заменить перед продакшеном
+
+1. **Изображения** — сейчас использованы плейсхолдеры (placehold.co) для обложки книги, фото
+   Taija, галереи и блога. Замените `cover_image_url` / `image_url` в `backend/src/db/seed.sql`
+   (или прямо в базе) на реальные фото — те же, что на старом Wix-сайте.
+2. **Материалы для скачивания** — `frontend/public/materials/*.pdf` сейчас текстовые заглушки.
+   Положите туда настоящие PDF (раскраски, задания) с теми же именами файлов, либо поменяйте
+   `file_url` в таблице `materials`.
+3. **Email и контакты** — в `frontend/src/pages/Contact.jsx` стоит `taija@example.com`, замените
+   на настоящий адрес.
+4. **JWT_SECRET** в `.env` — обязательно сгенерируйте длинную случайную строку для продакшена.
+5. **CORS/CLIENT_ORIGIN** — укажите боевой домен фронтенда.
+
+## Деплой (варианты)
+
+Готовых решений под ключ не настраивал, т.к. хостинг вы ещё не выбрали. Пара простых вариантов:
+
+- **Render / Railway** — поднимают и Node.js backend, и managed PostgreSQL в пару кликов,
+  бесплатный тариф подойдёт для старта.
+- **Frontend**: Vercel или Netlify (просто собирает `npm run build` → папку `dist`), либо тот же
+  Render как статический сайт.
+- Не забудьте выставить `DATABASE_URL`, `JWT_SECRET`, `CLIENT_ORIGIN` в переменных окружения
+  хостинга backend, и `VITE_API_URL`/прокси-настройку, если фронт и бэк будут на разных доменах
+  (сейчас запросы идут на относительный `/api`, так что при раздельном хостинге нужно либо
+  настроить прокси на фронт-хостинге, либо завести `VITE_API_URL` и поправить `src/api/client.js`).
+
+Скажите, какой хостинг выберете — помогу с конкретной настройкой деплоя.
+
+## Дальнейшие возможные улучшения
+
+- Простая админ-панель для Taija (добавление книг/материалов/постов блога, смена статусов заказов) без прямого доступа к базе
+- Онлайн-оплата (Stripe), если решите подключить позже — структура БД уже это не блокирует
+- Email-уведомления о новых заказах
